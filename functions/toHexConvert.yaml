@@ -5,7 +5,9 @@ hexF:
     (
       $parties:= $eval($$.hexF.partiesToParty_ttl);
       $products:= $eval($$.hexF.productsToProduct_ttl);
-      $append($parties, $products);
+      $processes:= $eval($$.hexF.processesToProcess_ttl);
+      $1st:= $append($parties, $products);
+      $2nd:= $append($1st, $processes);
     )
 
   toHexEdges: >
@@ -13,9 +15,11 @@ hexF:
       $supports:= $eval($$.hexF.dh_componentsToHex);
       $fromParties:= $eval($$.hexF.partiesToEdges);
       $fromProducts:= $eval($$.hexF.productsToEdges);
+      $fromProcesses:= $eval($$.hexF.processesToEdges);
 
-      $fromKADZO:= $append($fromParties, $fromProducts);
-      $append($fromKADZO, $supports);
+      $accum:= $append($fromParties, $fromProducts);
+      $accum:= $append($accum, $fromProcesses);
+      $accum:= $append($accum, $supports);
     )
 
 # from KADZO to Hex Converters
@@ -99,6 +103,63 @@ hexF:
 
         $converted:= $append($owner, $used);
         $append($converted, $maps);
+      )})], $append)
+    )
+
+  processesToProcess_ttl: >
+    (
+      $seaf_core_processes:= $$."seaf.ba.processes".$spread();
+      $map($seaf_core_processes, function($v){
+        { "id": $keys($v),
+          "body": $v.* 
+        }
+      })
+    )
+
+  processesToEdges: >
+    (
+      $seaf_core_processes:= $$."seaf.ba.processes".$spread();
+      $reduce([$map($seaf_core_processes, function($v){(
+
+      $maps:= {
+          "source": $keys($v),
+          "target": "mm.process",
+          "label": "map"
+        };
+
+        
+        $owner:= $v.*.owner;
+        $owner:= $owner != null ? {"source": $keys($v),
+                                    "target": $owner,
+                                    "label":"владелец" 
+                                  };
+        $hi_process:= $v.*.relates;
+        $hi_process:= $hi_process != null ? {"source": $keys($v),
+                                                "target": $hi_process,
+                                                "label":"относится к" 
+                                            };
+
+        $next:= $v.*.next_processes;
+        $next:= $map($next, function($vv) {
+          { "source": $keys($v),
+            "target": $vv,
+            "label":"поток работ" 
+          }
+        });
+
+        $automated:= $v.*.systems;
+        $automated:= $map($automated, function($vv) {
+          { "target": $keys($v),
+            "source": $vv,
+            "label":"поддерживает" 
+          }
+        });
+
+
+        $converted:= $append($maps, $owner);
+        $converted:= $append($converted, $hi_process);
+        $converted:= $append($converted, $next);
+        $converted:= $append($converted, $automated);
       )})], $append)
     )
 
