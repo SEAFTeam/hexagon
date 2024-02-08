@@ -6,8 +6,10 @@ hexF:
       $parties:= $eval($$.hexF.partiesToParty_ttl);
       $products:= $eval($$.hexF.productsToProduct_ttl);
       $processes:= $eval($$.hexF.processesToProcess_ttl);
+      $requirements:= $eval($$.hexF.requirementsToRequirement_ttl);
       $1st:= $append($parties, $products);
       $2nd:= $append($1st, $processes);
+      $3rd:= $append($2nd, $requirements);
     )
 
   toHexEdges: >
@@ -32,7 +34,7 @@ hexF:
         }
       })
     )
-
+#todo добавить конвертацию reports
   partiesToEdges: >
     (
       $kadzo_parties:= $$."seaf.ba.parties".$spread();
@@ -51,6 +53,8 @@ hexF:
             "label":"" 
           }
         });
+
+
 
         $relates:= $v.*.relates;
         $relates:= $map($relates, function($vv) {
@@ -126,13 +130,13 @@ hexF:
           "target": "mm.process",
           "label": "map"
         };
-
         
         $owner:= $v.*.owner;
         $owner:= $owner != null ? {"source": $keys($v),
                                     "target": $owner,
                                     "label":"владелец" 
                                   };
+                                  
         $hi_process:= $v.*.relates;
         $hi_process:= $hi_process != null ? {"source": $keys($v),
                                                 "target": $hi_process,
@@ -155,15 +159,49 @@ hexF:
           }
         });
 
+        $reqs:= $v.*.requirements;
+        $reqs:= $map($reqs, function($vv) {
+          { "source": $keys($v),
+            "target": $vv,
+            "label": "требует"
+          }
+        });
+
 
         $converted:= $append($maps, $owner);
         $converted:= $append($converted, $hi_process);
         $converted:= $append($converted, $next);
         $converted:= $append($converted, $automated);
+        $converted:= $append($converted, $reqs);
       )})], $append)
     )
 
+  requirementsToRequirement_ttl: >
+    (
+      $seaf_core_requirements:= $$."seaf.change.requirements".$spread();
+      $map($seaf_core_requirements, function($v){
+        { "id": $keys($v),
+          "body": $v.* 
+        }
+      })
+    )
+
+  requirementsToEdges: >
+    (
+      $seaf_core_requirements:= $$."seaf.change.requirements".$spread();
+      $map($seaf_core_requirements, function($v) {
+        $maps:= {
+                  "source": $keys($v),
+                  "target": "mm.requirement",
+                  "label": "map"
+                }
+      })
+
+    )
+
+
 # Translation app layer objects links into hex
+# todo разбить на две функции как у остальных сущностей
   dh_componentsToHex: >
     (
       $components:= $$.components.$spread()[$.*.entity="component"];
@@ -174,6 +212,10 @@ hexF:
         $regs:= $map($v.*.processes, function($vv) {
           {"source": $keys($v), "target": $vv, "label": "поддерживает"}
         });
+        $regs2:= $map($v.*.requirements, function($vv) {
+          {"source": $keys($v), "target": $vv, "label": "обеспечивает"}
+        });
+        $regs:= $append($regs, $regs2);
         $append($maps, $regs);
       )}), $append)
     )
