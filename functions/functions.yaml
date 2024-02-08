@@ -154,7 +154,7 @@ hexF:
         )});
         $count($y) = 0 ? $v
       )});
-
+#todo metalabels
   resolveView: >
     (
       $patternPre:= $.patternPre;
@@ -174,7 +174,8 @@ hexF:
       $landscapeNodes:= $nodes.landscape;
 
       $patternEdges:= $edges[$.source in $patternNodes and $.target in $patternNodes and $not($.label in $patternPre[$keys($) = "hexR"].hexR.exclude)];
-      $landscapeEdges:= $edges[$.source in $landscapeNodes.id_bage.id and $.target in $landscapeNodes.id_bage.id];
+      /*and $.label in $patternEdges.label -- landscape edges labels need to be matched with pattern edges labels in order landscape edges to be rendered*/
+      $landscapeEdges:= $edges[$.source in $landscapeNodes.id_bage.id and $.target in $landscapeNodes.id_bage.id and $.label in $patternEdges.label];
       $landscapeEdges:= $map($landscapeEdges, function($v) {(
         $sourcePat:= $landscapeNodes[$v.source in $.id_bage.id].pat;
         $targetPat:= $landscapeNodes[$v.target in $.id_bage.id].pat;
@@ -182,7 +183,11 @@ hexF:
         $edgePat ?
           (
             $labelPat:= $edgePat.label;
-            $v.label ? $v~>|$|{"label": ($labelPat? $labelPat & ".") & $.label}| : $v~>|$|{"label": ($labelPat? $labelPat)}|
+            /*landscape edges get labels from pattern*/
+            /*$v.label ? $v~>|$|{"label": ($labelPat? $labelPat & ".") & $.label}| : $v~>|$|{"label": ($labelPat? $labelPat)}|*/
+            /*landscape edges don't get labels from pattern*/
+            $v.label ? $v~>|$|{"label": $.label}| : $v~>|$|{"label": ($labelPat? $labelPat)}|
+
           )
       )});
       
@@ -248,7 +253,7 @@ hexF:
         )});
 
         $nestLandscape:= function($toNest, $landscape, $i){(
-          $landscape:= $landscape~>|$.nodes[$.id = $toNest[$i].node]|{"path": $append($.path, $toNest[$i].path)}|; /* alternative {"path": $append($.path, $toNest[$i].path)}*/ /*old {"path": $toNest[$i].path}*/
+          $landscape:= $landscape~>|$.nodes[$.id = $toNest[$i].node]|{"path": $not($toNest[$i].path in $.path) ? $append($.path, $toNest[$i].path) : $.path}|; /* alternative {"path": $append($.path, $toNest[$i].path)}*/ /*old {"path": $toNest[$i].path}*/
           
           $edgesToReplace_source:= $landscape.edges[$.source = $toNest[$i].node]; $edgesToAdd_source:= $map($edgesToReplace_source, function($v) {{"source": $toNest[$i].path, "target": $v.target, "label": $v.label}});
           $edgesToReplace_target:= $landscape.edges[$.target = $toNest[$i].node]; $edgesToAdd_target:= $map($edgesToReplace_target, function($v) {{"source": $v.source, "target": $toNest[$i].path, "label": $v.label}});
@@ -261,11 +266,14 @@ hexF:
         $nestedLandscape:= $nestLandscape($toNest, $landscape, 0);
         
         $edgesCleared:= $map($nestedLandscape.edges, function($v) {$not($v.source in $toNest.node) and $not($v.target in $toNest.node) ? $v});
-
+        $edgesCleared:= $distinct($edgesCleared);
+        
         $unNestedEdges:= $map($edgesCleared, function($v){
-          $not($substringBefore($v.label, ".") in $nesting.edges.label) ? $v
+          
+          /*$not($substringBefore($v.label, ".") in $nesting.edges.label) ? $v*/
+          $not($v.label in $nesting.edges.label) ? $v
         });
-        $nestedLandscape:= $nestedLandscape~>|$|{"edges": $unNestedEdges}|;
+        $nestedLandscape:= $nestedLandscape~>|$|{"edges": $count($unNestedEdges)=0 ? [] : $unNestedEdges}|;
         
         {"pattern": $pattern, 
         "landscape": $nestedLandscape
