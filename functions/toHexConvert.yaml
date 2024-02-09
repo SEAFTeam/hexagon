@@ -7,9 +7,16 @@ hexF:
       $products:= $eval($$.hexF.productsToProduct_ttl);
       $processes:= $eval($$.hexF.processesToProcess_ttl);
       $requirements:= $eval($$.hexF.requirementsToRequirement_ttl);
-      $1st:= $append($parties, $products);
-      $2nd:= $append($1st, $processes);
-      $3rd:= $append($2nd, $requirements);
+
+      $capabilities:= $eval($$.hexF.capabilitiesToCapability_ttl);
+      $bapies:= $eval($$.hexF.bapiesToBapi_ttl);
+
+      $accum:= $append($parties, $products);
+      $accum:= $append($accum, $processes);
+      $accum:= $append($accum, $requirements);
+
+      $accum:= $append($accum, $capabilities);
+      $accum:= $append($accum, $bapies);
     )
 
   toHexEdges: >
@@ -19,9 +26,15 @@ hexF:
       $fromProducts:= $eval($$.hexF.productsToEdges);
       $fromProcesses:= $eval($$.hexF.processesToEdges);
 
+      $fromCapabilities:= $eval($$.hexF.capabilitiesToEdges);
+      $fromBapies:= $eval($$.hexF.bapiesToEdges);
+
       $accum:= $append($fromParties, $fromProducts);
       $accum:= $append($accum, $fromProcesses);
       $accum:= $append($accum, $supports);
+
+      $accum:= $append($accum, $fromCapabilities);
+      $accum:= $append($accum, $fromBapies);
     )
 
 # from KADZO to Hex Converters
@@ -196,9 +209,90 @@ hexF:
                   "label": "map"
                 }
       })
+    )
+
+
+# from BBB to hex converters
+
+  capabilitiesToCapability_ttl: >
+    (
+      $seaf_bbb_capabilities:= $$."seaf.bbb.capabilities".$spread();
+      $map($seaf_bbb_capabilities, function($v){
+        { "id": $keys($v),
+          "body": $v.* 
+        }
+      })
+    )
+
+  capabilitiesToEdges: >
+    (
+      $seaf_bbb_capabilities:= $$."seaf.bbb.capabilities".$spread();
+      $reduce([$map($seaf_bbb_capabilities, function($v){(
+
+      $maps:= {
+          "source": $keys($v),
+          "target": "mm.capability",
+          "label": "map"
+        };
+        
+        
+        $owner:= $v.*.owner;
+        $owner:= $owner != null ? {"source": $keys($v),
+                                    "target": $owner,
+                                    "label":"владелец" 
+                                  };
+                                  
+        $hi_cap:= $v.*.relates;
+        $hi_cap:= $hi_cap != null ? {"source": $keys($v),
+                                        "target": $hi_cap,
+                                        "label":"относится к" 
+                                    };
+
+        $api_used:= $v.*.use_b_apies;
+        $api_used:= $map($api_used, function($vv) {
+          { "source": $keys($v),
+            "target": $vv,
+            "label":"использует" 
+          }
+        });
+        $converted:= $append($maps, $owner);
+        $converted:= $append($converted, $hi_cap);
+        $converted:= $append($converted, $api_used);
+      )})], $append)
 
     )
 
+  bapiesToBapi_ttl: >
+    (
+      $seaf_bbb_bapies:= $$."seaf.bbb.b_api".$spread();
+      $map($seaf_bbb_bapies, function($v){
+        { "id": $keys($v),
+          "body": $v.* 
+        }
+      })
+    )
+
+  bapiesToEdges: >
+    (
+      $seaf_bbb_bapies:= $$."seaf.bbb.b_api".$spread();
+      $reduce([$map($seaf_bbb_bapies, function($v){(
+
+      $maps:= {
+          "source": $keys($v),
+          "target": "mm.bapi",
+          "label": "map"
+        };
+        
+                $hi_cap:= $v.*.relates;
+        $hi_cap:= $hi_cap != null ? {"source": $keys($v),
+                                     "target": $hi_cap,
+                                     "label":"предоставляется" 
+                                    };
+
+        $converted:= $append($maps, $hi_cap);
+      )})], $append)
+
+    )
 
 # Translation app layer objects links into hex
 # todo разбить на две функции как у остальных сущностей
