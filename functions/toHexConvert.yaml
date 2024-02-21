@@ -256,6 +256,15 @@ hexF:
           }
         });
 
+        $api_provided:= $v.*.provide_b_apies;
+        $api_provided:= $map($api_provided, function($vv) {
+          { "source": $keys($v),
+            "target": $vv,
+            "label":"предоставляет" 
+          }
+        });
+
+
         $process_comp:= $v.*.composed_of;
         $process_comp:= $map($process_comp, function($vv) {
           { "source": $vv,
@@ -267,6 +276,7 @@ hexF:
         $converted:= $append($maps, $owner);
         $converted:= $append($converted, $hi_cap);
         $converted:= $append($converted, $api_used);
+        $converted:= $append($converted, $api_provided);
         $converted:= $append($converted, $process_comp);
 
       )})], $append)
@@ -293,14 +303,15 @@ hexF:
           "target": "mm.bapi",
           "label": "map"
         };
-        
-                $hi_cap:= $v.*.relates;
+      /*  
+        $hi_cap:= $v.*.relates;
         $hi_cap:= $hi_cap != null ? {"source": $keys($v),
                                      "target": $hi_cap,
                                      "label":"предоставляется" 
                                     };
 
         $converted:= $append($maps, $hi_cap);
+      */  
       )})], $append)
 
     )
