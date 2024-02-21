@@ -265,11 +265,11 @@ hexF:
         });
 
 
-        $process_comp:= $v.*.composed_of;
+        $process_comp:= $v.*.used_in;
         $process_comp:= $map($process_comp, function($vv) {
-          { "source": $vv,
-            "target": $keys($v),
-            "label":"исполняется в" 
+          { "source": $keys($v),
+            "target": $vv,
+            "label":"используется в" 
           }
         });
 
