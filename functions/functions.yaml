@@ -158,6 +158,10 @@ hexF:
   resolveView: >
     (
       $patternPre:= $.patternPre;
+
+      $dir:= $patternPre[$.hexR.dir="vertical"].hexR.dir;
+      $dir:= $dir != "horizontal" ? "vertical" : "horizontal";
+
       $edges:= $eval($$.hexF.edges);
       $nodesL:= $eval($$.hexF.nodes);
       $nodes:= $map($patternPre, function($v) {(
@@ -274,6 +278,8 @@ hexF:
           $not($v.label in $nesting.edges.label) ? $v
         });
         $nestedLandscape:= $nestedLandscape~>|$|{"edges": $count($unNestedEdges)=0 ? [] : $unNestedEdges}|;
+        $nestedLandscape:= $nestedLandscape~>|$|$dir="vertical" ? {"dir": true}: {"dir": false}|;
+
         
         {"pattern": $pattern, 
         "landscape": $nestedLandscape
