@@ -25,6 +25,7 @@ hexF:
       $fromParties:= $eval($$.hexF.partiesToEdges);
       $fromProducts:= $eval($$.hexF.productsToEdges);
       $fromProcesses:= $eval($$.hexF.processesToEdges);
+      $fromFacades:= $eval($$.hexF.facadesToEdges);
 
       $fromCapabilities:= $eval($$.hexF.capabilitiesToEdges);
       $fromBapies:= $eval($$.hexF.bapiesToEdges);
@@ -35,6 +36,7 @@ hexF:
 
       $accum:= $append($accum, $fromCapabilities);
       $accum:= $append($accum, $fromBapies);
+      $accum:= $append($accum, $fromFacades);
     )
 
 # from KADZO to Hex Converters
@@ -63,7 +65,7 @@ hexF:
         $interested:= $map($interested, function($vv) {
           { "source": $keys($v),
             "target": $vv,
-            "label":"" 
+            "label":"заинтересован" 
           }
         });
 
@@ -73,7 +75,7 @@ hexF:
         $relates:= $map($relates, function($vv) {
           { "source": $keys($v),
             "target": $vv,
-            "label":"" 
+            "label":"относится к" 
           }
         });
 
@@ -107,14 +109,14 @@ hexF:
         $owner:= $v.*.owner;
         $owner:= {"source": $keys($v),
                   "target": $owner,
-                  "label":"" 
+                  "label":"владелец" 
                  };
 
         $used:= $v.*.used_in;
         $used:= $map($used, function($vv) {
           { "source": $keys($v),
             "target": $vv,
-            "label":"" 
+            "label":"потребляется в составе" 
           }
         });
 
@@ -313,6 +315,32 @@ hexF:
         $converted:= $append($maps, $hi_cap);
       */  
       )})], $append)
+
+    )
+
+  facadesToEdges: >
+    (
+        $products_facade:= $$."seaf.ba.products".$spread()[$.*.facade];
+        $products_in_facades:= $$."seaf.facades".$map($, function($v) {$$."seaf.ba.products".$spread()[$keys($) = $v ]});
+        $product_facade:= $append($products_facade, $products_in_facades);
+        $product_facades:=  $map($product_facade, function($v) {
+                      { "source": $keys($v),
+                        "target": "mm.facade",
+                        "label":"является" 
+                      } 
+                    });   
+
+        $parties_facade:= $$."seaf.ba.parties".$spread()[$.*.facade];
+        $parties_in_facades:= $$."seaf.facades".$map($, function($v) {$$."seaf.ba.parties".$spread()[$keys($) = $v ]});
+        $party_facade:= $append($parties_facade, $parties_in_facades);
+        $party_facades:=  $map($party_facade, function($v) {
+                      { "source": $keys($v),
+                        "target": "mm.facade",
+                        "label":"является" 
+                      } 
+                    });
+
+        $append($product_facades, $party_facades);
 
     )
 

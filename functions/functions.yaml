@@ -163,7 +163,10 @@ hexF:
       $dir:= $dir != "horizontal" ? "vertical" : "horizontal";
 
       $edges:= $eval($$.hexF.edges);
+
       $nodesL:= $eval($$.hexF.nodes);
+      $patternPre:= $patternPre~>|$|{}, ["domain"]|;
+
       $nodes:= $map($patternPre, function($v) {(
           $type($v) = "string" and $match($v, /\.hexQ/).match ? 
             ( $k:= $replace($v, /\.hexQ/, "");
