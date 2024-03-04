@@ -3,13 +3,13 @@ hexF:
 
 
 
-  # Scans objects declarations through whole lake by seaf.ba.ttl
-  # Excludes in-seaf.ba.ttl relations declarations
-  # Builds array of nodes {"id": seaf.ba.ttl_id, "body": attributes except hex}
+  # Scans objects declarations through whole lake by hex.ttl
+  # Excludes in-hex.ttl relations declarations
+  # Builds array of nodes {"id": hex.ttl_id, "body": attributes except hex}
   # Returns all nodes
   nodes: >
     (
-      $nativeTTL:= $$."seaf.ba.ttl"; 
+      $nativeTTL:= $$."hex.ttl"; 
       $nativeTTL:= $mergedeep([$nativeTTL, $$.components.$spread()[$.*.entity="component"]]);
       $nodes:= $each($nativeTTL, function($v, $k) {
                       {"id": $k, "body": $v~>|$|{}, ["hex", "hexQ", "hexV"]|}
@@ -20,7 +20,7 @@ hexF:
   
   edges: >
     (
-      $nativeTTL:= $$."seaf.ba.ttl";
+      $nativeTTL:= $$."hex.ttl";
       $inTTLHexes:= $map($spread($nativeTTL), function($v) {
                         $v.*.hex ? $map($spread($v.*.hex), function($vv) {(
                                       $hasParams:= "hexParams" in $keys($vv.*) ? $vv.*.hexParams : null;
@@ -42,7 +42,7 @@ hexF:
 
   queryExe: >
     (
-      $qId:= $.qId; $qObj:= $lookup($$."seaf.ba.ttl", $qId);
+      $qId:= $.qId; $qObj:= $lookup($$."hex.ttl", $qId);
 
       $nodes:= $eval($$.hexF.nodes);
       $qNode:= $qObj.hexQ ? {"qId": $qId, 
@@ -53,7 +53,7 @@ hexF:
       $qRes:=$type($qNode.query) = "object" ?
         (
           $headId:= $keys($qNode.query);
-          $heads:= $headId = "seaf.ba.ttl" ? $nodes.id : 
+          $heads:= $headId = "hex.ttl" ? $nodes.id : 
                    $match($headId, /\.hexQ/).match ? $eval($$.hexF.queryExe, {"qId": $replace($headId, /\.hexQ/, "")}) :
                    $headId in $nodes.id ? $headId : "one or more query arguments don'exist";
           

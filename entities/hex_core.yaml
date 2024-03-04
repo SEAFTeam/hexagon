@@ -1,5 +1,5 @@
 entities:
-  seaf.ba.ttl:
+  hex.ttl:
     schema:
       type: object
       patternProperties:
@@ -19,7 +19,7 @@ entities:
   hexV:
     # menu: >
     #   ( /*
-    #     $seaf.ba.ttlMenu:= []; /*placeholder for seaf.ba.ttl control menu items*/
+    #     $hex.ttlMenu:= []; /*placeholder for hex.ttl control menu items*/
 
     #     $menu:= $map($eval($$.hexF.nodes)[$.body.side != null], function($v) {(
     #                               $map($v.body.side, function($vv) {
@@ -30,7 +30,7 @@ entities:
     #     )});
     #     $menu:= $reduce($menu, $append);
 
-    #     $append($seaf.ba.ttlMenu, $menu)
+    #     $append($hex.ttlMenu, $menu)
     #     */
     #   )
     presentations:
@@ -48,7 +48,7 @@ entities:
               $modes_selected:= $split($modes_selected, ".");
 
               /*get view object and check if hexV is well formed*/
-              $view:= $lookup($$."seaf.ba.ttl", $vId);
+              $view:= $lookup($$."hex.ttl", $vId);
               $not($exists($view.hexV)) ? {"error": "Object **" & $vId & "** has no view configuration (hexV)"} :
                 $count($view.hexV) = 0 ? {"error": "Object **" & $vId & "** has empty view configuration (hexV)"} :
             /*PARAMS WELL FORMED*/
