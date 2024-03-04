@@ -8,11 +8,11 @@
   #     # Описание
   #     description: Расширение для создания метамоделей и описания архитектуры в DocHub без использования jsonata
   #     # Версия
-  #     version: 1.1.0
+  #     version: 1.2.0
   #     # Зависимости от других пакетов
   #     dependencies:
   #       dochub: ">=3.8.0"
-  #       seaf-core: ">=1.2.0"
+  #       seaf-core: ">=1.2.4"
 
   imports:
     - entities/hex_core.yaml
