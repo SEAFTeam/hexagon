@@ -3,20 +3,14 @@ hexF:
 # converted entities final assembly
   toHexNodes: >
     (
-      $parties:= $eval($$.hexF.partiesToParty_ttl);
-      $products:= $eval($$.hexF.productsToProduct_ttl);
-      $processes:= $eval($$.hexF.processesToProcess_ttl);
-      $requirements:= $eval($$.hexF.requirementsToRequirement_ttl);
-
-      $capabilities:= $eval($$.hexF.capabilitiesToCapability_ttl);
-      $bapies:= $eval($$.hexF.bapiesToBapi_ttl);
-
-      $accum:= $append($parties, $products);
-      $accum:= $append($accum, $processes);
-      $accum:= $append($accum, $requirements);
-
-      $accum:= $append($accum, $capabilities);
-      $accum:= $append($accum, $bapies);
+      $accum:= $entity_to_ttl($$."seaf.ba.parties");
+      
+      $accum:= $append($accum, $entity_to_ttl($$."seaf.ba.products"));
+      $accum:= $append($accum, $entity_to_ttl($$."seaf.ba.processes"));
+      $accum:= $append($accum, $entity_to_ttl($$."seaf.change.requirements"));
+      $accum:= $append($accum, $entity_to_ttl($merge($$."components".$spread()[$.*.type = "service"])));
+      $accum:= $append($accum, $entity_to_ttl($$."seaf.bbb.capabilities"));
+      $accum:= $append($accum, $entity_to_ttl($$."seaf.bbb.b_api"));
     )
 
   toHexEdges: >
@@ -39,16 +33,17 @@ hexF:
       $accum:= $append($accum, $fromFacades);
     )
 
-# from KADZO to Hex Converters
+# from SEAF-CORE to Hex Converters
   partiesToParty_ttl: >
     (
-      $kadzo_parties:= $$."seaf.ba.parties".$spread();
-      $map($kadzo_parties, function($v){
+      $kadzo_products:= $$."seaf.ba.parties".$spread();
+      $map($kadzo_products, function($v){
         { "id": $keys($v),
           "body": $v.* 
         }
       })
     )
+
 #todo добавить конвертацию reports
   partiesToEdges: >
     (
@@ -363,3 +358,31 @@ hexF:
         $append($maps, $regs);
       )}), $append)
     )
+
+
+functions:
+
+  entity_to_ttl:
+    title: Converts DH Entity to hex.ttl entity 
+    params:
+      - type: object
+        title: $$.<entity_id>
+        alias: objects
+        required: true
+    code: >
+      (
+          $objects:= objects.$spread();
+
+          $ttl_nodes:= $map($objects, function($v){
+                          { "id": $keys($v),
+                            "body": $v.* 
+                          }
+                        });
+
+          $count($ttl_nodes) > 0
+            ? [$ttl_nodes]
+            : []
+      )
+    result:
+      type: array
+      description: array of ttl objects (nodes) 
