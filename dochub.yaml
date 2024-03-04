@@ -8,10 +8,10 @@
   #     # Описание
   #     description: Расширение для создания метамоделей и описания архитектуры в DocHub без использования jsonata
   #     # Версия
-  #     version: 1.2.0
+  #     version: 1.2.1
   #     # Зависимости от других пакетов
   #     dependencies:
-  #       dochub: ">=3.8.0"
+  #       dochub: ">=3.9.0"
   #       seaf-core: ">=1.2.4"
 
   imports:
@@ -24,3 +24,4 @@
     url: "http://localhost:8081/"   # Base URL is used in PlantUml templates links
     title_length_threshold: 12      # This param influence the objects long titles breaking down into multiline
 
+#todo Заменить идентификатор ttl
