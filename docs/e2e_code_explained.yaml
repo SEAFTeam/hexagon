@@ -18,7 +18,7 @@
 
 
 
-seaf.ba.ttl:             # основная DocHub-сущность Hexagon.
+hex.ttl:             # основная DocHub-сущность Hexagon.
                          # Любые архитектурные объекты и их отношения описываются с помощью ttl (true typeless)
 
   sber.berezka:                                     # Идентификатор архитектурного объекта
@@ -128,7 +128,7 @@ seaf.ba.ttl:             # основная DocHub-сущность Hexagon.
 
 # Запросы, паттерны (метамодели), вью https://github.com/altershaman/eco_methodology/blob/master_method/entities/ba/metamodel.yaml
 
-seaf.ba.ttl:             # Мета-объекты тоже описываются с помощью основной DocHub-сущности ttl
+hex.ttl:             # Мета-объекты тоже описываются с помощью основной DocHub-сущности ttl
 
   mm.party:
     title: Участник
@@ -140,7 +140,7 @@ seaf.ba.ttl:             # Мета-объекты тоже описываютс
         mm.party:
     hexQ:                                            # hexQ - Hexagon Query
                                                      # Объект mm.party содержит в себе запрос к исходным данным и является указателем на:
-      seaf.ba.ttl:                                   #    все ttl-объекты,
+      hex.ttl:                                   #    все ttl-объекты,
         EVERY=>map:                                  #    которые имеют как минимум одно исходящее отношение "map"
           mm.party:                                  #    к mm.party, т.е., в данном случае к самому исходному архитектурному объекту
                                                      # Т.о., к mm.party можно обратиться как к архитектурному объекту:
@@ -159,7 +159,7 @@ seaf.ba.ttl:             # Мета-объекты тоже описываютс
       <=относится к:
         processes:
     hexQ:
-      seaf.ba.ttl:
+      hex.ttl:
         EVERY=>map:
           mm.product:
 

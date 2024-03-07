@@ -1,0 +1,251 @@
+hexF:
+
+  context_config: >
+          (
+            $ctx:= $.ctx;
+            $ctx_node:= $eval($$.hexF.nodes)[$.id = $ctx];
+            $ctx_view_id:= $.id;
+
+            $ctx_view_body:= $lookup($$."hex.ttl", $ctx_view_id);
+
+            /*Getting list of hex Queries to find ctx clause in them*/      
+            $pattern_keys:= $ctx_view_body.**.hexV.$keys()[$ != "modes" and $ != "hexR"].($substringBefore($, ".hexQ"));
+
+            $queries_id:=  $map($pattern_keys, function($v) {(
+                          $get_query_keys:= function($query_id_wo_hexQ, $i, $queries) {(
+                            $query_keys:= [$lookup($$."hex.ttl", $query_id_wo_hexQ[$i])
+                                              .hexQ.**.$keys()[$contains($, ".hexQ")]
+                                              .($substringBefore($, ".hexQ"))];
+                            $queries:= $append($queries, $query_keys);
+
+                            $queries:= $count($query_keys) > 0
+                              ? $append($queries, $get_query_keys($query_keys, 0, []));
+                              
+                              $i < $count($query_id_wo_hexQ)-1
+                                ? $get_query_keys($query_id_wo_hexQ, $i+1, $queries)
+                                : $queries
+                          )};
+                          $res:= $get_query_keys($v, 0, []);
+                        )});
+            $queries_id:= $distinct($append($pattern_keys, $reduce($queries_id, $append)));$log($queries_id, "res");
+
+            /*Replace ctx-placeholder with ctx-id*/
+            $ctx_merge:= $map($queries_id, function($v) {
+              {$v:$lookup($$."hex.ttl", $v)}
+            }); $log($merge($ctx_merge));
+
+            $str:= $string($merge($ctx_merge));$log($str);
+            $str:= $replace($str, "\"ctx\":", "\"" & $ctx & "\":");
+            $ctx_replaced:= $eval($str); $log($ctx_replaced);
+
+            /*$merge([{$ctx_view_id: $ctx_view_body}, $ctx_replaced])*/
+
+            
+
+            
+          )
+
+  # id - viewId
+  viewBuilder: >
+    (
+      /*link: /entities/hexV/view??id=vId&mode=mode_x.mode_y*/
+
+      /*CHECK PARAMS*/
+        $vId:= $.id; $modes_selected:= $.mode; $ctx:= $.ctx; $ctx_built:= $.ctx_built;
+        $log($ctx_built, "ctx received");
+        /*if mode is multileveled, then get array of mode levels from top to bottom*/
+        $modes_selected:= $split($modes_selected, ".");
+
+        /*get view object and check if hexV is well formed*/
+        $view:= $lookup($$."hex.ttl", $vId);$log($view, "ctx view");
+        $not($exists($view.hexV)) ? {"error": "Object **" & $vId & "** has no view configuration (hexV)"} :
+          $count($view.hexV) = 0 ? {"error": "Object **" & $vId & "** has empty view configuration (hexV)"} :
+      /*PARAMS WELL FORMED*/
+
+          (
+            /*GET SELECTED MODE'S PATTERN */
+              /*get modes tree*/
+              $chunks:= $distinct($view.hexV.**.modes.%.{"h": $.title, "l": $.modes.title});
+              $patternPre:= $count($chunks) > 0 ? 
+                /*mode defined*/
+                (
+                  $chunks:= $map($chunks, function($v) {
+                    $map($v.l, function($vv) {(
+                      {"source": $v.h ? $v.h : "viewRoot", "target": $vv, "label": "moded"}
+                    )})
+                  });
+                  $chains:= $eval($$.hexF.getChains, {"edges": $reduce($chunks, $append)}); $log($chains);
+                  $maxChain:= function($max, $v) {$count($v.path) > $max ? $count($v.path) : $max};
+                  $v_dim:= $reduce($chains, $maxChain, 0);
+                  $leveling:= function($chains, $ci, $v_dim, $matrix) {(
+                    $level:= $map($chains, function($v){(
+                      $ch:= $map($v.path[[0..$ci]], function($vv){$vv != "viewRoot" and $vv != "moded" ? $vv});
+                      $v.path[$ci] ? {"chain": $ch, "b": $v.path[$ci-2], "l":$v.path[$ci]} : null
+                    )});
+                    $matrix:= $append($matrix, {"lev_" & $ci/2:$distinct($level)[$ != null]});
+                    $ci< $v_dim-1 ? $leveling($chains, $ci+2, $v_dim, $matrix) : $matrix;
+                  )};
+                  $modes:= $leveling($chains, 2, $v_dim, []);
+                  $modes:= $map($modes, function($v, $i) {(
+                    $row:= $map($v.*, function($vv) {
+                      $vv.b = "viewRoot" or $vv.b = $modes_selected[$i-1] ? 
+                        {"level": $eval($replace($keys($v), "lev_", "")), "chain": $encodeUrl($join($vv.chain, ".")), "b": $vv.b, "title": $vv.l, "description": $view.hexV.**.modes[$.title = $vv.l].description, "selected": $vv.l = $modes_selected[$i] ? true : false}
+                    });
+                    $row ? (true in $row.selected ? {"row": $row} : {"row": $row~>|$[0]|{"selected": true}|})
+                  )});
+                  $assemblyMode:= $modes.**.selected[$=true].%.title; 
+                  $patternNodes:= $keys($merge($view.**.hexV.%[$.title in $assemblyMode].hexV)); 
+                  {"vId": $vId, "body": $view~>|$|{}, ["hexV"]|, "modes": $modes, "patternPre": $patternNodes}
+                ) : 
+                /*modes undefined*/
+                {"vId": $vId, "body": $view~>|$|{}, ["hexV"]|, "patternPre": $keys($view.hexV)};
+            /*SELECTED MODE's PATTERN EXTRACTED*/
+              
+              /*restore hexR object*/                  
+              $patternPre:= $patternPre~>|$|{"patternPre": $append($.patternPre, [{"hexR": $patternPre.modes ? $view.hexV.modes.**[$.title=$patternPre.modes.*[$.selected].title].hexV.hexR : $view.hexV.hexR}])}|;
+
+            /*GET VIEW DATA*/
+              $r:= $eval($$.hexF.resolveView, {"patternPre": $patternPre.patternPre, "ctx": $ctx, "ctx_built": $ctx_built});
+
+              /*prepare view data for template*/
+              $patternPre~>|$|{"resView": {"pattern": $encodeUrl($string($r.pattern)), "landscape": $encodeUrl($string($r.landscape))}}, ["patternPre"]|
+              
+          ) 
+    )
+
+  resolveCtxView: >
+    (
+      $patternPre:= $.patternPre; $log($patternPre, "patternPre");
+      $ctx_built:= $.ctx_built;
+      $dir:= $patternPre[$.hexR.dir="vertical"].hexR.dir;
+      $dir:= $dir != "horizontal" ? "vertical" : "horizontal";
+
+      $edges:= $eval($$.hexF.edges);
+      $ctxEdges:= $eval($$.hexF.ctxEdges, {"ctx_built": $ctx_built});$log($ctxEdges, "ctxEdges");
+      $edges:= $append($edges, $ctxEdges);
+
+      $nodesL:= $eval($$.hexF.nodes, {"ctx_built": $ctx_built});
+
+      $nodes:= $map($patternPre, function($v) {(
+          $type($v) = "string" and $match($v, /\.hexQ/).match ? 
+            ( $k:= $replace($v, /\.hexQ/, "");
+              $ld_ids:= $eval($$.hexF.queryCtxExe, {"qId": $k, "nodes": $nodesL, "edges": $edges}) ;    $log($k, "query id"); 
+              {"pattern":$k, "landscape": {"pat": $k, "id_bage": $map($ld_ids, function($v) {{"id": $v, "bage": $nodesL[$.id = $k].body.bage}})}};
+            ) : 
+          $not($match($keys($v), /hexR/).match) ?
+            {"pattern":$v, "landscape": {"pat": $v, "id_bage": {"id": $v, "bage": $nodesL[$.id = $v].body.bage}}}
+        )});
+      
+      $patternNodes:= $nodes.pattern;
+      $landscapeNodes:= $nodes.landscape;
+
+      $patternEdges:= $edges[$.source in $patternNodes and $.target in $patternNodes and $not($.label in $patternPre[$keys($) = "hexR"].hexR.exclude)];
+      /*and $.label in $patternEdges.label -- landscape edges labels need to be matched with pattern edges labels in order landscape edges to be rendered*/
+      $landscapeEdges:= $edges[$.source in $landscapeNodes.id_bage.id and $.target in $landscapeNodes.id_bage.id and $.label in $patternEdges.label];
+      $landscapeEdges:= $map($landscapeEdges, function($v) {(
+        $sourcePat:= $landscapeNodes[$v.source in $.id_bage.id].pat;
+        $targetPat:= $landscapeNodes[$v.target in $.id_bage.id].pat;
+        $edgePat:= $patternEdges[$.source = $sourcePat and $.target = $targetPat];
+        $edgePat ?
+          (
+            $labelPat:= $edgePat.label;
+            /*landscape edges get labels from pattern*/
+            /*$v.label ? $v~>|$|{"label": ($labelPat? $labelPat & ".") & $.label}| : $v~>|$|{"label": ($labelPat? $labelPat)}|*/
+            /*landscape edges don't get labels from pattern*/
+            $v.label ? $v~>|$|{"label": $.label}| : $v~>|$|{"label": ($labelPat? $labelPat)}|
+
+          )
+      )});
+      
+      $pattern:=   {"nodes": $nodesL[$.id in $patternNodes]~>|$.body|($bage:= $.bage;$bage ? {"bage": {"bId": $bage, "svg": $$.hexBages.$eval($bage)}})|,
+                    "edges": $patternEdges};
+      $landscape:= {"nodes": $nodesL[$.id in $landscapeNodes.id_bage.id]~>|$|($i:=$.id; $bage:= $distinct($landscapeNodes[$i in $.id_bage.id].id_bage.bage); $bage ? {"body": $.body~>|$|{"bage": {"bId": $bage, "svg": $$.hexBages.$eval($bage)}}|   })|,
+                    "edges": $landscapeEdges};
+
+      /*nesting*/
+      $nesting:= $patternPre[$keys($) = "hexR"].hexR.nest;
+      $nesting:= $count($nesting) > 0 ?
+        (
+            $rules:= $reduce($map($nesting, function($v) {(
+            $rules:= $match($keys($v), /=>/).match ? {"nest": "source", "rule": $substringAfter($keys($v), "=>")} :
+                    $match($keys($v), /<=/).match ? {"nest": "target", "rule": $substringAfter($keys($v), "<=")};
+            )}), $append);
+
+            $edgesToNest:= $landscapeEdges[$substringBefore($.label, ".") in $rules.rule];
+            $nestChunks:= $edgesToNest ? $eval($$.hexF.traverse, {"edges": $reduce($edgesToNest, $append)});
+            $nestChunks:= $map($nestChunks, function($v){
+                $v.path[1] ? ($rules[$.rule = $v.path[1]].nest = "source" ? $v : {"path": $reverse($v.path)}) : $v
+            });
+            $nestChains:= $eval($$.hexF.getChainsFromChunks, {"paths": $nestChunks});
+            {"chains": $nestChains, "edges": $edgesToNest}
+        ); 
+
+        /*leveling*/
+        $maxChain:= function($max, $v) {$count($v.path) > $max ? $count($v.path) : $max};
+        $v_dim:= $reduce($nesting.chains, $maxChain, 0);
+        $leveling:= function($chains, $ci, $v_dim, $matrix) {(
+            $level:= $map($chains, function($v){( 
+            $ch:= $map($v.path[[0..$ci]], function($vv){$vv != "viewRoot" and $vv != "moded" ? $vv});
+            $v.path[$ci] ? {"chain": $ch, "b": $v.path[$ci-2], "l":$v.path[$ci]} : null
+            )});
+            $matrix:= $append($matrix, {"lev_" & $ci/2:$distinct($level)[$ != null]});
+            $ci< $v_dim-1 ? $leveling($chains, $ci+2, $v_dim, $matrix) : $matrix;
+        )};
+        $X:= $leveling($nesting.chains, 2, $v_dim, []);
+        $X:= $map($X.*, function($v) {(
+            {"path": $v.chain}
+        )});
+
+        $Y:= $map($X, function($v, $i, $a){(
+            $concats:=$map($a, function($vv, $ii, $aa) {(
+                        
+                        $reduce($map($vv.path, function($vvv, $iii) {(
+                            ($i != $ii and $iii >= 2) and $v.path[0] = $vvv ? {"path": $append($vv.path[[0..$iii-1]], $v.path)};
+                        )}), $append);
+                      )});
+            
+
+            $count($concats) >0 ? $concats : $v
+        )});
+            
+
+        $toNest:= $map($reduce($Y, $append), function($v){(
+        /*$toNest:= $map($nesting.chains, function($v){(*/
+          $composePath:= function($aPath, $cPath, $i) {(
+            $cPath:= $cPath ? $cPath & ".." & $aPath[$i] : $aPath[$i];
+            $i<$count($aPath)-1 ? $composePath($aPath, $cPath, $i+2) : $cPath;
+          )};
+          {"node": $v.path[-1], "path": $composePath($v.path, "", 0), "rule": $v.path[1]}
+        )});
+
+        $nestLandscape:= function($toNest, $landscape, $i){(
+          $landscape:= $landscape~>|$.nodes[$.id = $toNest[$i].node]|{"path": $not($toNest[$i].path in $.path) ? $append($.path, $toNest[$i].path) : $.path}|; /* alternative {"path": $append($.path, $toNest[$i].path)}*/ /*old {"path": $toNest[$i].path}*/
+          
+          $edgesToReplace_source:= $landscape.edges[$.source = $toNest[$i].node]; $edgesToAdd_source:= $map($edgesToReplace_source, function($v) {{"source": $toNest[$i].path, "target": $v.target, "label": $v.label}});
+          $edgesToReplace_target:= $landscape.edges[$.target = $toNest[$i].node]; $edgesToAdd_target:= $map($edgesToReplace_target, function($v) {{"source": $v.source, "target": $toNest[$i].path, "label": $v.label}});
+
+          $landscape:= $landscape~>|$|{"edges": $append($.edges, $edgesToAdd_source)}|;
+          $landscape:= $landscape~>|$|{"edges": $append($.edges, $edgesToAdd_target)}|;
+
+          $i<$count($toNest)-1 ? $nestLandscape($toNest, $landscape, $i+1) : $landscape;
+        )};
+        $nestedLandscape:= $nestLandscape($toNest, $landscape, 0);
+        
+        $edgesCleared:= $map($nestedLandscape.edges, function($v) {$not($v.source in $toNest.node) and $not($v.target in $toNest.node) ? $v});
+        $edgesCleared:= $distinct($edgesCleared);
+        
+        $unNestedEdges:= $map($edgesCleared, function($v){
+          
+          /*$not($substringBefore($v.label, ".") in $nesting.edges.label) ? $v*/
+          $not($v.label in $nesting.edges.label) ? $v
+        });
+        $nestedLandscape:= $nestedLandscape~>|$|{"edges": $count($unNestedEdges)=0 ? [] : $unNestedEdges}|;
+        $nestedLandscape:= $nestedLandscape~>|$|$dir="vertical" ? {"dir": true}: {"dir": false}|;
+
+        
+        {"pattern": $pattern, 
+        "landscape": $nestedLandscape
+        }
+      )
+
+
