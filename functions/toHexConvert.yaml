@@ -1,32 +1,86 @@
 hexF:
 
 # converted entities final assembly
+#todo edges converters to standartaze to use configs
   toHexNodes: >
     (
-      $accum:= $entity_to_ttl($$."seaf.ba.parties");
-      
-      $accum:= $append($accum, $entity_to_ttl($$."seaf.ba.products"));
-      $accum:= $append($accum, $entity_to_ttl($$."seaf.ba.processes"));
-      $accum:= $append($accum, $entity_to_ttl($$."seaf.change.requirements"));
-      $accum:= $append($accum, $entity_to_ttl($merge($$."components".$spread()[$.*.type = "service"])));
-      $accum:= $append($accum, $entity_to_ttl($$."seaf.bbb.capabilities"));
-      $accum:= $append($accum, $entity_to_ttl($$."seaf.bbb.b_api"));
-    )
+      $seaf_objects:= [
+        {"seaf_parties": $$."seaf.ba.parties"},
+        {"seaf_products": $$."seaf.ba.products"},
+        {"seaf_processes": $$."seaf.ba.processes"},
+        {"seaf_requirements": $$."seaf.change.requirements"},
+        {"seaf_apps": $merge($$."components".$spread()[$.*.type = "service"])},
+        {"seaf_biz_obj": $$."seaf.ia.business_objects"},
+        {"seaf_capabilities": $$."seaf.bbb.capabilities"},
+        {"seaf_bapies": $$."seaf.bbb.b_api"}
+      ];
 
+
+      $hex_objects:= $map($seaf_objects, function($v){(
+                        $count($v.$keys()) > 0 ?
+                        {"hex" & $substringAfter($v.$keys(), "seaf"): $entity_to_ttl($merge($v.*))}
+                      )});
+
+      $seafToHexRels_config:= [
+        { "source": $hex_objects.hex_parties,
+          "target": "mm.party",
+          "label": "map"
+        },
+        { "source": $hex_objects.hex_products,
+          "target": "mm.product",
+          "label": "map"
+        },
+        { "source": $hex_objects.hex_requirements,
+          "target": "mm.requirement",
+          "label": "map"
+        },
+        { "source": $hex_objects.hex_apps,
+          "target": "mm.resource",
+          "label": "map"
+        },
+        { "source": $hex_objects.hex_apps,
+          "target": "mm.resource.app_service",
+          "label": "map"
+        },
+        { "source": $hex_objects.hex_biz_obj,
+          "target": "mm.resource",
+          "label": "map"
+        },
+        { "source": $hex_objects.hex_biz_obj,
+          "target": "mm.resource.data",
+          "label": "map"
+        },
+        { "source": $hex_objects.hex_capabilities,
+          "target": "mm.capability",
+          "label": "map"
+        },
+        { "source": $hex_objects.hex_bapies,
+          "target": "mm.bapi",
+          "label": "map"
+        },
+        { "source": $hex_objects.hex_parties,
+          "target": "$.*.is_part_of",
+          "label": "является частью"
+        }
+      ];
+
+      $hex_nodes:= $hex_objects.*
+    )
   toHexEdges: >
     (
-      $supports:= $eval($$.hexF.dh_componentsToHex);
       $fromParties:= $eval($$.hexF.partiesToEdges);
       $fromProducts:= $eval($$.hexF.productsToEdges);
       $fromProcesses:= $eval($$.hexF.processesToEdges);
       $fromFacades:= $eval($$.hexF.facadesToEdges);
-
+      $fromBizObjects:= $eval($$.hexF.biz_objToEdges);
       $fromCapabilities:= $eval($$.hexF.capabilitiesToEdges);
       $fromBapies:= $eval($$.hexF.bapiesToEdges);
+      $fromApps:= $eval($$.hexF.appsToEdges);
 
       $accum:= $append($fromParties, $fromProducts);
       $accum:= $append($accum, $fromProcesses);
-      $accum:= $append($accum, $supports);
+      $accum:= $append($accum, $fromBizObjects);
+      $accum:= $append($accum, $fromApps);
 
       $accum:= $append($accum, $fromCapabilities);
       $accum:= $append($accum, $fromBapies);
@@ -34,15 +88,15 @@ hexF:
     )
 
 # from SEAF-CORE to Hex Converters
-  partiesToParty_ttl: >
-    (
-      $kadzo_products:= $$."seaf.ba.parties".$spread();
-      $map($kadzo_products, function($v){
-        { "id": $keys($v),
-          "body": $v.* 
-        }
-      })
-    )
+  # partiesToParty_ttl: >
+  #   (
+  #     $kadzo_products:= $$."seaf.ba.parties".$spread();
+  #     $map($kadzo_products, function($v){
+  #       { "id": $keys($v),
+  #         "body": $v.* 
+  #       }
+  #     })
+  #   )
 
 #todo добавить конвертацию reports
   partiesToEdges: >
@@ -64,6 +118,13 @@ hexF:
           }
         });
 
+        $is_part:= $v.*.is_part_of;
+        $is_part:= $map($is_part, function($vv) {
+          { "source": $keys($v),
+            "target": $vv,
+            "label":"является частью" 
+          }
+        });
 
 
         $relates:= $v.*.relates;
@@ -75,19 +136,20 @@ hexF:
         });
 
         $converted:= $append($interested, $relates);
-        $append($converted, $maps);
+        $converted:= $append($converted, $maps);
+        $converted:= $append($converted, $is_part)
       )})], $append)
     )
 
-  productsToProduct_ttl: >
-    (
-      $kadzo_products:= $$."seaf.ba.products".$spread();
-      $map($kadzo_products, function($v){
-        { "id": $keys($v),
-          "body": $v.* 
-        }
-      })
-    )
+  # productsToProduct_ttl: >
+  #   (
+  #     $kadzo_products:= $$."seaf.ba.products".$spread();
+  #     $map($kadzo_products, function($v){
+  #       { "id": $keys($v),
+  #         "body": $v.* 
+  #       }
+  #     })
+  #   )
 
   productsToEdges: >
     (
@@ -120,15 +182,15 @@ hexF:
       )})], $append)
     )
 
-  processesToProcess_ttl: >
-    (
-      $seaf_core_processes:= $$."seaf.ba.processes".$spread();
-      $map($seaf_core_processes, function($v){
-        { "id": $keys($v),
-          "body": $v.* 
-        }
-      })
-    )
+  # processesToProcess_ttl: >
+  #   (
+  #     $seaf_core_processes:= $$."seaf.ba.processes".$spread();
+  #     $map($seaf_core_processes, function($v){
+  #       { "id": $keys($v),
+  #         "body": $v.* 
+  #       }
+  #     })
+  #   )
 
   processesToEdges: >
     (
@@ -147,11 +209,13 @@ hexF:
                                     "label":"владелец" 
                                   };
                                   
-        $hi_process:= $v.*.relates;
-        $hi_process:= $hi_process != null ? {"source": $keys($v),
-                                                "target": $hi_process,
-                                                "label":"относится к" 
-                                            };
+        $is_part:= $v.*.is_part_of;
+        $is_part:= $map($is_part, function($vv) {
+          { "source": $keys($v),
+            "target": $vv,
+            "label":"является частью" 
+          }
+        });
 
         $next:= $v.*.next_processes;
         $next:= $map($next, function($vv) {
@@ -177,24 +241,34 @@ hexF:
           }
         });
 
+        $products:= $v.*.products;
+        $products:= $map($products, function($vv) {
+          { "source": $keys($v),
+            "target": $vv,
+            "label": "поддерживает"
+          }
+        });
+
 
         $converted:= $append($maps, $owner);
-        $converted:= $append($converted, $hi_process);
+        $converted:= $append($converted, $is_part);
         $converted:= $append($converted, $next);
         $converted:= $append($converted, $automated);
         $converted:= $append($converted, $reqs);
+        $converted:= $append($converted, $products);
+
       )})], $append)
     )
 
-  requirementsToRequirement_ttl: >
-    (
-      $seaf_core_requirements:= $$."seaf.change.requirements".$spread();
-      $map($seaf_core_requirements, function($v){
-        { "id": $keys($v),
-          "body": $v.* 
-        }
-      })
-    )
+  # requirementsToRequirement_ttl: >
+  #   (
+  #     $seaf_core_requirements:= $$."seaf.change.requirements".$spread();
+  #     $map($seaf_core_requirements, function($v){
+  #       { "id": $keys($v),
+  #         "body": $v.* 
+  #       }
+  #     })
+  #   )
 
   requirementsToEdges: >
     (
@@ -208,18 +282,92 @@ hexF:
       })
     )
 
+  biz_objToEdges: >
+    (
+      $biz_obj:= $$."seaf.ia.business_objects".$spread();
+      $reduce([$map($biz_obj, function($v){(
+
+      $maps:= {
+          "source": $keys($v),
+          "target": "mm.resource",
+          "label": "map"
+        };
+
+      $maps2:= {
+          "source": $keys($v),
+          "target": "mm.resource.data",
+          "label": "map"
+        };
+
+  
+
+        $processes:= $v.*.processes;
+        $processes:= $map($processes, function($vv) {
+          { "source": $keys($v),
+            "target": $vv,
+            "label":"поддерживает" 
+          }
+        });
+
+        $converted:= $append($processes, $maps);
+        $append($converted, $maps2);
+      )})], $append)
+    )
+
+  appsToEdges: >
+    (
+      $apps:= $$."components".$spread()[$.*.type = "service"];
+      $reduce([$map($apps, function($v){(
+
+      $maps:= {
+          "source": $keys($v),
+          "target": "mm.resource",
+          "label": "map"
+        };
+
+      $maps2:= {
+          "source": $keys($v),
+          "target": "mm.resource.app_service",
+          "label": "map"
+        };
+
+        $processes:= $v.*.processes;
+        $processes:= $map($processes, function($vv) {
+          { "source": $keys($v),
+            "target": $vv,
+            "label":"поддерживает" 
+          }
+        });
+
+        $requirements:= $v.*.requirements;
+        $requirements:= $map($requirements, function($vv) {
+          { "source": $keys($v),
+            "target": $vv,
+            "label":"удовлетворяет" 
+          }
+        });
+
+
+        $converted:= $append($processes, $maps);
+        $converted:= $append($converted, $maps2);
+        $converted:= $append($converted, $requirements);
+
+      )})], $append)
+    )
+
+
 
 # from BBB to hex converters
 
-  capabilitiesToCapability_ttl: >
-    (
-      $seaf_bbb_capabilities:= $$."seaf.bbb.capabilities".$spread();
-      $map($seaf_bbb_capabilities, function($v){
-        { "id": $keys($v),
-          "body": $v.* 
-        }
-      })
-    )
+  # capabilitiesToCapability_ttl: >
+  #   (
+  #     $seaf_bbb_capabilities:= $$."seaf.bbb.capabilities".$spread();
+  #     $map($seaf_bbb_capabilities, function($v){
+  #       { "id": $keys($v),
+  #         "body": $v.* 
+  #       }
+  #     })
+  #   )
 
   capabilitiesToEdges: >
     (
@@ -280,15 +428,15 @@ hexF:
 
     )
 
-  bapiesToBapi_ttl: >
-    (
-      $seaf_bbb_bapies:= $$."seaf.bbb.b_api".$spread();
-      $map($seaf_bbb_bapies, function($v){
-        { "id": $keys($v),
-          "body": $v.* 
-        }
-      })
-    )
+  # bapiesToBapi_ttl: >
+  #   (
+  #     $seaf_bbb_bapies:= $$."seaf.bbb.b_api".$spread();
+  #     $map($seaf_bbb_bapies, function($v){
+  #       { "id": $keys($v),
+  #         "body": $v.* 
+  #       }
+  #     })
+  #   )
 
   bapiesToEdges: >
     (
@@ -339,25 +487,6 @@ hexF:
 
     )
 
-# Translation app layer objects links into hex
-# todo разбить на две функции как у остальных сущностей
-  dh_componentsToHex: >
-    (
-      $components:= $$.components.$spread()[$.*.entity="component"];
-      $reduce($map($components, function($v) {(
-        $maps:= [
-          {"source": $keys($v), "target": "mm.resource", "label": "map"},
-          {"source": $keys($v), "target": "mm.resource.app_service", "label": "type"}];
-        $regs:= $map($v.*.processes, function($vv) {
-          {"source": $keys($v), "target": $vv, "label": "поддерживает"}
-        });
-        $regs2:= $map($v.*.requirements, function($vv) {
-          {"source": $keys($v), "target": $vv, "label": "обеспечивает"}
-        });
-        $regs:= $append($regs, $regs2);
-        $append($maps, $regs);
-      )}), $append)
-    )
 
 
 functions:

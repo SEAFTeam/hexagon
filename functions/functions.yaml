@@ -9,26 +9,46 @@ hexF:
   # Returns all nodes
   nodes: >
     (
+      $ctx_built:= $.ctx_built;
+      
       $nativeTTL:= $$."hex.ttl"; 
       $nativeTTL:= $mergedeep([$nativeTTL, $$.components.$spread()[$.*.entity="component"]]);
       $nodes:= $each($nativeTTL, function($v, $k) {
-                      {"id": $k, "body": $v~>|$|{}, ["hex", "hexQ", "hexV"]|}
+                      {"id": $k, "body": $v~>|$|{}, ["hexQ", "hexV"]|}
                     }
                );
+
+      $nodes:= $ctx_built
+        ? (
+              $ctx_built_nodes:= $ctx_built.$spread().{"id": $keys($), "body": $.*};
+              $map($nodes, function($v) {
+                $v.id in $ctx_built_nodes.id
+                  ? $ctx_built_nodes[$.id = $v.id]
+                  : $v
+              
+              }); $log($nodesL, "nodes enriched");
+
+            )
+        : $nodes;
       $nodes:= $append($nodes, $eval($$.hexF.toHexNodes)) /*Add converted entities*/
     )
   
   edges: >
     (
-      $nativeTTL:= $$."hex.ttl";
-      $inTTLHexes:= $map($spread($nativeTTL), function($v) {
-                        $v.*.hex ? $map($spread($v.*.hex), function($vv) {(
+      $ctx_built:= $.ctx_built;
+      $nativeTTL:= $ctx_built
+        ? $eval($$.hexF.nodes, {"ctx_built": $ctx_built})
+        : $eval($$.hexF.nodes);
+      $log($nativeTTL);
+      /*$nativeTTL:= $$."hex.ttl";*/
+      $inTTLHexes:= $map($nativeTTL, function($v) {
+                        $v.body.hex ? $map($spread($v.body.hex), function($vv) {(
                                       $hasParams:= "hexParams" in $keys($vv.*) ? $vv.*.hexParams : null;
                                       $vv ? $map($spread($vv.*), function($vvv) {(
                                         $not("hexParams" in $keys($vvv)) ?
                                           ( $dir:= $match($keys($vv), /<=/).match ? "<=" : "=>"; 
-                                            $vvv ? {"source": $dir = "=>" ? $keys($v): $keys($vvv),
-                                                    "target": $dir = "=>" ? $keys($vvv): $keys($v),
+                                            $vvv ? {"source": $dir = "=>" ? $v.id: $keys($vvv),
+                                                    "target": $dir = "=>" ? $keys($vvv): $v.id,
                                                     "label": $replace($keys($vv), /<=|=>/, ""),
                                                     "hexParams": $hasParams ? $hasParams
                                                    }
@@ -86,6 +106,52 @@ hexF:
       {"error": "query not defined"};
     )
 
+  queryCtxExe: >
+    (
+      $nodes:= $.nodes;
+
+      $qId:= $.qId; $qObj:= $nodes[$.id = $qId].body; $log($qObj, "query object");
+
+      $qNode:= $qObj.hexQ ? {"qId": $qId, 
+                             "body": $qObj~>|$|{}, ["hex", "hexQ", "hexP", "hexR"]|,
+                             "query": $qObj.hexQ
+                             };
+
+      $qRes:=$type($qNode.query) = "object" ?
+        (
+          $headId:= $keys($qNode.query);
+          $heads:= $headId = "hex.ttl" ? $nodes.id : 
+                   $match($headId, /\.hexQ/).match ? $eval($$.hexF.queryCtxExe, {"qId": $replace($headId, /\.hexQ/, ""), "nodes": $nodes}) :
+                   $headId in $nodes.id ? $headId : "one or more query arguments don'exist";
+          
+          $result:= $heads = "one or more query arguments don'exist" ? {"error": "one or more query arguments don'exist"} :
+            (
+              $accum:= function($heads, $conditions, $ic) {(
+
+                $edgeCond:= $keys($conditions[$ic]);
+                $edgeRule:= $match($edgeCond, /EVERY|NONE|ONE|ANY/).match;
+                $edgeDir:= $match($edgeCond, /<=|=>/).match;
+                $heads:= $not($edgeRule and $edgeDir) ? {"error": "conditions corrupted"} :
+                ( 
+                  $edgeLabel:= $replace($edgeCond, $edgeRule, ""); $edgeLabel:= $replace($edgeLabel, $edgeDir, "");
+                  $tails:= $map($spread($conditions[$ic].*), function($vv,$i){
+                    $match($keys($vv), /\.hexQ/).match ? {"t"&$i: $eval($$.hexF.queryExe, {"qId": $replace($keys($vv), /\.hexQ/, "")})}: {"t"&$i: $keys($vv)}
+                  });
+                  /*$tails:= $reduce($tails, $append);*/
+                  $heads:= $edgeRule = "EVERY" ? $eval($$.hexF.getEvery, {"heads": $heads, "dir": $edgeDir, "label": $edgeLabel, "tails": $tails}) :
+                           $edgeRule = "ANY" ? $eval($$.hexF.getAny, {"heads": $heads, "dir": $edgeDir, "label": $edgeLabel, "tails": $tails}):
+                           $edgeRule = "ONE" ? $eval($$.hexF.getOne, {"heads": $heads, "dir": $edgeDir, "label": $edgeLabel, "tails": $tails}):
+                           $edgeRule = "NONE" ? $eval($$.hexF.getNone, {"heads": $heads, "dir": $edgeDir, "label": $edgeLabel, "tails": $tails});
+                );
+                $ic<$count($conditions)-1 ? $accum ($heads, $conditions, $ic+1) : $heads
+              )};
+              
+              $accum($heads, $spread($qNode.query.*), 0)
+            )
+        ) :
+
+      {"error": "query not defined"};
+    )
   
 
   getEvery: >
@@ -158,14 +224,15 @@ hexF:
   resolveView: >
     (
       $patternPre:= $.patternPre;
+      $ctx:= $.ctx;
+      $ctx_built:= $.ctx_built;
 
       $dir:= $patternPre[$.hexR.dir="vertical"].hexR.dir;
       $dir:= $dir != "horizontal" ? "vertical" : "horizontal";
 
-      $edges:= $eval($$.hexF.edges);
+      $edges:= $eval($$.hexF.edges, {"ctx_built": $ctx_built});
 
-      $nodesL:= $eval($$.hexF.nodes);
-      $patternPre:= $patternPre~>|$|{}, ["domain"]|;
+      $nodesL:= $eval($$.hexF.nodes, {"ctx_built": $ctx_built});
 
       $nodes:= $map($patternPre, function($v) {(
           $type($v) = "string" and $match($v, /\.hexQ/).match ? 
