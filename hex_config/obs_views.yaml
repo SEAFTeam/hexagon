@@ -1,4 +1,85 @@
-seaf.ba.ttl:
+hex.ttl:
+
+
+  # ctx_allocation:
+  #   title: Окружение
+  #   hexV:
+  #     sber.berezka.ctx.hexQ:
+  #     ctx_owns.hexQ:
+  #     ctx_customers.hexQ:
+  #     ctx_consumes.hexQ:
+  #     ctx_suppliers:
+  #     hexR:
+  #       dir: vertical
+  # # owns:
+  # #   consumers:
+  # #     aggr:
+  # # consumes:
+  # #   owners:
+  # #     aggr:
+
+  # sber.berezka.ctx:
+  #   title: Березка как контекст
+  #   bage: person_gear_orange
+  #   hex:
+  #     <=владелец:
+  #       mm.product:
+  #   hexQ:
+  #     sber.berezka:
+  #       ANY=>map:
+  #         mm.party:
+
+
+  # ctx_owns:
+  #   title: Предоставляемые продукты
+  #   bage: box_heart
+  #   hex:
+  #     =>владелец:
+  #       sber.berezka.ctx:
+  #     =>потребляется в составе:
+  #       ctx_owns:
+  #   hexQ:
+  #     mm.product.hexQ:
+  #       EVERY=>владелец:
+  #         sber.berezka:     
+  
+  # ctx_consumes:
+  #   title: Потребляемые продукты
+  #   bage: box_heart
+  #   hex:
+  #     <=заинтересован:
+  #       sber.berezka.ctx:
+  #     =>потребляется в составе:
+  #       ctx_owns:
+  #     <=потребляется в составе:
+  #       ctx_owns:
+  #   hexQ:
+  #     mm.product.hexQ:
+  #       EVERY<=заинтересован:
+  #         sber.berezka:     
+
+  # ctx_customers:
+  #   title: Потребители продуктов Березки
+  #   bage: person_gear_orange
+  #   hex:
+  #     =>заинтересован:
+  #       ctx_owns:
+  #   hexQ:
+  #     mm.party.hexQ:
+  #       EVERY=>заинтересован:
+  #         ctx_owns.hexQ:
+
+  # ctx_suppliers:
+  #   title: Партнеры и поставщики Березки
+  #   bage: person_gear_orange
+  #   hex:
+  #     <=владелец:
+  #       ctx_consumes:
+  #   hexQ:
+  #     mm.party.hexQ:
+  #       EVERY<=владелец:
+  #         ctx_consumes.hexQ:
+
 
 # Ecosystem _________________________________________________________________________________________________________
 
@@ -8,8 +89,10 @@ seaf.ba.ttl:
     hex:
       =>заинтересован:
         mm.product:
+      =>является частью:
+        mm.party:
     hexQ:
-      seaf.ba.ttl:
+      hex.ttl:
         EVERY=>map:
           mm.party:
 
@@ -19,12 +102,12 @@ seaf.ba.ttl:
     hex:
       =>владелец:
         mm.party:
-      <=использует:
+      <=потребляется в составе:
         mm.product:
       <=относится к:
         processes:
     hexQ:
-      seaf.ba.ttl:
+      hex.ttl:
         EVERY=>map:
           mm.product:
 
@@ -46,7 +129,9 @@ seaf.ba.ttl:
             mm.product.hexQ:
             hexR:
               nest:
-                - <=использует:
+                - <=потребляется в составе:
+                - <=является частью:
+              dir: vertical
 
 
 # Motivations _________________________________________________________________________________________________________
@@ -58,7 +143,7 @@ seaf.ba.ttl:
       <=устанавливает:
         mm.party:
     hexQ:
-      seaf.ba.ttl:
+      hex.ttl:
         EVERY=>map:
           mm.goal_need:
 
@@ -72,7 +157,7 @@ seaf.ba.ttl:
       =>воздействует:
         mm.party:
     hexQ:
-      seaf.ba.ttl:
+      hex.ttl:
         EVERY=>map:
           mm.driver:
 
@@ -86,7 +171,7 @@ seaf.ba.ttl:
       <=оценивает:
         mm.party:
     hexQ:
-      seaf.ba.ttl:
+      hex.ttl:
         EVERY=>map:
           mm.value:
 
@@ -111,7 +196,7 @@ seaf.ba.ttl:
       =>предшествует:
         mm.process:
     hexQ:
-      seaf.ba.ttl:
+      hex.ttl:
         EVERY=>map:
           mm.process:
 
@@ -119,11 +204,23 @@ seaf.ba.ttl:
   #   title: Событие
   #   bage: bulb_red
   #   hexQ:
-  #     seaf.ba.ttl:
+  #     hex.ttl:
   #       EVERY=>map:
   #         event:
 
 
+  mm.requirement:
+    title: Требование
+    bage: baloon_heart_filled
+    hex:
+      <=требует:
+        mm.process:
+      <=удовлетворяет:
+        mm.resource:
+    hexQ:
+      hex.ttl:
+        EVERY=>map:
+          mm.requirement:
 
   
   process_map:
@@ -186,37 +283,37 @@ seaf.ba.ttl:
       <=в составе:
         mm.process:
     hexQ:
-      seaf.ba.ttl:
+      hex.ttl:
         EVERY=>map:
           mm.capability:
-
-  capability_map:
-    title: Карта компетенций
-    hexV:
-      modes:
-        - title: Карта способностей
-          hexV:
-            mm.capability.hexQ:
-            hexR:
-              nest:
-                - <=в составе:
-        - title: Процессы по способностям
-          hexV:
-            mm.capability.hexQ:
-            mm.process.hexQ:
-            hexR:
-              nest:
-                - <=в составе:
-        - title: Ресурсные потоки
-          hexV:
-            mm.capability.hexQ:
-            mm.process.hexQ:
-            mm.resource.hexQ:
-            hexR:
-              exclude:
-                - enables
-              nest:
-                - <=в составе:
+# todo To Delete
+  # capability_map:
+  #   title: Карта компетенций
+  #   hexV:
+  #     modes:
+  #       - title: Карта способностей
+  #         hexV:
+  #           mm.capability.hexQ:
+  #           hexR:
+              # nest:
+              #   - <=в составе:
+        # - title: Процессы по способностям
+        #   hexV:
+        #     mm.capability.hexQ:
+        #     mm.process.hexQ:
+        #     hexR:
+        #       nest:
+        #         - <=в составе:
+        # - title: Ресурсные потоки
+        #   hexV:
+        #     mm.capability.hexQ:
+        #     mm.process.hexQ:
+        #     mm.resource.hexQ:
+        #     hexR:
+        #       exclude:
+        #         - enables
+        #       nest:
+        #         - <=в составе:
 
   # Resources _______________________________________________________
   mm.resource:
@@ -229,10 +326,8 @@ seaf.ba.ttl:
       <=производит:
         mm.party:
         mm.process:
-      =>тип:
-        mm.resource:
     hexQ:
-      seaf.ba.ttl:
+      hex.ttl:
         EVERY=>map:
           mm.resource:
 
@@ -241,17 +336,19 @@ seaf.ba.ttl:
     bage: ui_window
     hex:
     hexQ:
-      seaf.ba.ttl:
-        EVERY=>type:
+      hex.ttl:
+        EVERY=>map:
           mm.resource.app_service:
 
   mm.resource.data: 
     title: Ресурс (данные)
     bage: braces_blue
     hex:
+      =>поддерживает:
+        mm.process:
     hexQ:
-      seaf.ba.ttl:
-        EVERY=>type:
+      hex.ttl:
+        EVERY=>map:
           mm.resource.data:
 
   mm.resource.material:
@@ -259,8 +356,8 @@ seaf.ba.ttl:
     bage: box_sealed
     hex:
     hexQ:
-      seaf.ba.ttl:
-        EVERY=>type:
+      hex.ttl:
+        EVERY=>map:
           mm.resource.material:
 
   mm.resource.money:
@@ -268,40 +365,40 @@ seaf.ba.ttl:
     bage: bank_card_green
     hex:
     hexQ:
-      seaf.ba.ttl:
-        EVERY=>type:
+      hex.ttl:
+        EVERY=>map:
           mm.resource.money:
 
   mm.resource.hr:
     title: Ресурс (рабочая сила)
     hex:
     hexQ:
-      seaf.ba.ttl:
-        EVERY=>type:
+      hex.ttl:
+        EVERY=>map:
           mm.resource.hr:
 
   mm.resource.access:
     title: Ресурс (доступ, право)
     hex:
     hexQ:
-      seaf.ba.ttl:
-        EVERY=>type:
+      hex.ttl:
+        EVERY=>map:
           mm.resource.access:
 
   mm.resource.rules:
     title: Ресурс (знания, технология, регулирование)
     hex:
     hexQ:
-      seaf.ba.ttl:
-        EVERY=>type:
+      hex.ttl:
+        EVERY=>map:
           mm.resource.rules:
 
   mm.resource.service:
     title: Ресурс (работы, услуги)
     hex:
     hexQ:
-      seaf.ba.ttl:
-        EVERY=>type:
+      hex.ttl:
+        EVERY=>map:
           mm.resource.service:
 
   
@@ -309,6 +406,9 @@ seaf.ba.ttl:
     title: Реестр ресурсов
     hexV:
       modes:
+        - title: Все Ресурсы
+          hexV:
+            mm.resource.hexQ:
         - title: Карта прикладных сервисов
           hexV:
             mm.resource.app_service.hexQ:
@@ -342,7 +442,7 @@ seaf.ba.ttl:
       =>относится к:
         capabilities:
     hexQ:
-      seaf.ba.ttl:
+      hex.ttl:
         EVERY=>map:
           org_unit:
 

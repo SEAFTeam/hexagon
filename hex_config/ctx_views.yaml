@@ -1,0 +1,80 @@
+hex.ttl:
+
+  ctx_allocation:
+    title: Окружение
+    hexV:
+      ctx_self.hexQ:
+      ctx_owns.hexQ:
+      ctx_customers.hexQ:
+      ctx_consumes.hexQ:
+      ctx_suppliers.hexQ:
+      hexR:
+        dir: vertical
+  # owns:
+  #   consumers:
+  #     aggr:
+  # consumes:
+  #   owners:
+  #     aggr:
+
+  ctx_self:
+    title: Контекст
+    bage: person_gear_orange
+    hex:
+      <=владелец:
+        mm.product:
+    hexQ:
+      ctx:
+        ANY=>map:
+          mm.party:
+
+
+  ctx_owns:
+    title: Предоставляемые продукты
+    bage: box_heart
+    hex:
+      =>владелец:
+        ctx_self:
+      =>потребляется в составе:
+        ctx_owns:
+    hexQ:
+      mm.product.hexQ:
+        EVERY=>владелец:
+          ctx:     
+  
+  ctx_consumes:
+    title: Потребляемые продукты
+    bage: box_heart
+    hex:
+      <=заинтересован:
+        ctx_self:
+      =>потребляется в составе:
+        ctx_owns:
+      <=потребляется в составе:
+        ctx_owns:
+    hexQ:
+      mm.product.hexQ:
+        EVERY<=заинтересован:
+          ctx:     
+
+  ctx_customers:
+    title: Потребители продуктов
+    bage: person_gear_orange
+    hex:
+      =>заинтересован:
+        ctx_owns:
+    hexQ:
+      mm.party.hexQ:
+        EVERY=>заинтересован:
+          ctx_owns.hexQ:
+
+  ctx_suppliers:
+    title: Партнеры и поставщики
+    bage: person_gear_orange
+    hex:
+      <=владелец:
+        ctx_consumes:
+    hexQ:
+      mm.party.hexQ:
+        EVERY<=владелец:
+          ctx_consumes.hexQ:
