@@ -1,26 +1,26 @@
-# Метаданные пакета
-$package:
-  hexagon: # Идентификатор пакета
-    # Краткое название пакета
-    name: Hexagon
-    # Поставщик
-    vendor: Sber & @altershaman
-    # Описание
-    description: Расширение для создания метамоделей и описания архитектуры в DocHub без использования jsonata
-    # Версия
-    version: 1.1.0
-    # Зависимости от других пакетов
-    dependencies:
-      dochub: ">=3.8.0"
-      seaf-core: ">=1.2.0"
+  # Метаданные пакета
+  # $package:
+  #   hexagon: # Идентификатор пакета
+  #     # Краткое название пакета
+  #     name: Hexagon
+  #     # Поставщик
+  #     vendor: Sber & @altershaman
+  #     # Описание
+  #     description: Расширение для создания метамоделей и описания архитектуры в DocHub без использования jsonata
+  #     # Версия
+  #     version: 1.2.0
+  #     # Зависимости от других пакетов
+  #     dependencies:
+  #       dochub: ">=3.8.0"
+  #       seaf-core: ">=1.2.4"
 
-imports:
-  - entities/hex_core.yaml
-  - docs/root.yaml
-  - functions/dochub.yaml  
-  - entities/templates/bages.yaml    
+  imports:
+    - entities/hex_core.yaml
+    - docs/root.yaml
+    - functions/dochub.yaml  
+    - entities/templates/bages.yaml    
 
-hexEnv:
-  url: "http://localhost:8081/"   # Base URL is used in PlantUml templates links
-  title_length_threshold: 12      # This param influence the objects long titles breaking down into multiline
+  hexEnv:
+    url: "http://localhost:8081/"   # Base URL is used in PlantUml templates links
+    title_length_threshold: 12      # This param influence the objects long titles breaking down into multiline
 

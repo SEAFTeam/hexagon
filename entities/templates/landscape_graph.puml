@@ -1,6 +1,9 @@
 @startuml
 
-top to bottom direction
+{{#dir}}left to right direction{{/dir}}
+{{^dir}}top to bottom direction{{/dir}}
+
+'top to bottom direction
 set separator ..
 hide empty description
 

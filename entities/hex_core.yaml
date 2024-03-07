@@ -42,7 +42,7 @@ entities:
             /*link: /entities/hexV/view??id=vId&mode=mode_x.mode_y*/
 
             /*CHECK PARAMS*/
-              $vId:= $params.id; $modes_selected:= $params.mode;
+              $vId:= $params.id; $modes_selected:= $params.mode; $domain:= $params.domain;
 
               /*if mode is multileveled, then get array of mode levels from top to bottom*/
               $modes_selected:= $split($modes_selected, ".");
@@ -96,7 +96,7 @@ entities:
                     $patternPre:= $patternPre~>|$|{"patternPre": $append($.patternPre, [{"hexR": $patternPre.modes ? $view.hexV.modes.**[$.title=$patternPre.modes.*[$.selected].title].hexV.hexR : $view.hexV.hexR}])}|;
 
                   /*GET VIEW DATA*/
-                    $r:= $eval($$.hexF.resolveView, {"patternPre": $patternPre.patternPre});
+                    $r:= $eval($$.hexF.resolveView, {"patternPre": $append($patternPre.patternPre, {"domain": $domain})});
 
                     /*prepare view data for template*/
                     $patternPre~>|$|{"resView": {"pattern": $encodeUrl($string($r.pattern)), "landscape": $encodeUrl($string($r.landscape))}}, ["patternPre"]|
